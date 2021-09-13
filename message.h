@@ -5,7 +5,6 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
-using namespace std;
 
 enum priorityLevel { Low, Medium, High };    //ekstra priorityLevel ekleyebilirsiniz
                                              //priorityLevel seviyeleri index olarak kullanilmistir
@@ -13,13 +12,13 @@ enum priorityLevel { Low, Medium, High };    //ekstra priorityLevel ekleyebilirs
 
 //priorityLevel ogeleri uzerinde yapacaginiz degisiklikleri priority_map ve string_map uzerine ekleyin
 
-unordered_map <priorityLevel, string> priority_map = {
+std::unordered_map <priorityLevel, std::string> priority_map = {
     {Low, "Low"},
     {Medium, "Medium"},
     {High, "High"}
 };
 
-unordered_map <string, priorityLevel> string_map = {
+std::unordered_map <std::string, priorityLevel> string_map = {
     {"Low", Low },
     {"Medium", Medium },
     {"High", High }
@@ -28,19 +27,20 @@ unordered_map <string, priorityLevel> string_map = {
 class Message
 {
 public:
-    Message(string to, string cc, string subject, string body, priorityLevel priority);
+    Message(std::string to, std::string cc, std::string subject, std::string body,
+            priorityLevel priority);
 
     void printMessage();                        //mesaji konsola yazdir
-    void printMessage(ofstream&);               //mesaji verilen ofstream ogesi kullanarak yazdir
-    string messageToString();                   //mesaji stringe cevirir    
+    void printMessage(std::ofstream&);               //mesaji verilen ofstream ogesi kullanarak yazdir
+    std::string messageToString();                   //mesaji stringe cevirir
     priorityLevel getPriority();                //priority'i direkt dondur
-    string getPriorityInfo();                   //priority'i string halinde dondur
+    std::string getPriorityInfo();                   //priority'i string halinde dondur
 
 private:
-    string to;
-    string cc;
-    string subject;
-    string body;
+    std::string to;
+    std::string cc;
+    std::string subject;
+    std::string body;
     priorityLevel priority;
 
 };
@@ -50,7 +50,8 @@ private:
 /*
 *Default Message constructor
 */
-Message::Message(string t, string c, string subj, string bdy, priorityLevel prio)
+Message::Message(std::string t, std::string c, std::string subj,
+                 std::string bdy, priorityLevel prio)
 {
     to = t;
     cc = c;
@@ -62,7 +63,7 @@ Message::Message(string t, string c, string subj, string bdy, priorityLevel prio
 /*
 * Private fonskiyon, enum tipte olan priority'i string'e cevir
 */
-string Message::getPriorityInfo()
+std::string Message::getPriorityInfo()
 {
     return priority_map.find(priority)->second; //second (key, value) pair'indeki value'u dondurur
 }
@@ -72,29 +73,29 @@ string Message::getPriorityInfo()
 */
 void Message::printMessage()
 {
-    cout << "To: " << this->to << endl;
-    cout << "Cc: " << this->cc << endl;
-    cout << "Subject: " << this->subject << endl;
-    cout << "Body: " << this->body << endl;
-    cout << "Priority: " << getPriorityInfo() << endl;
+    std::cout << "To: " << this->to << std::endl;
+    std::cout << "Cc: " << this->cc << std::endl;
+    std::cout << "Subject: " << this->subject << std::endl;
+    std::cout << "Body: " << this->body << std::endl;
+    std::cout << "Priority: " << getPriorityInfo() << std::endl;
 }
 
 /*
 *Mesaji duzgun sekilde verilen dosyaya yazdirir.
 */
-void Message::printMessage(ofstream& file_descriptor)
+void Message::printMessage(std::ofstream &file_descriptor)
 {
-    file_descriptor << "To: " << this->to << endl;
-    file_descriptor << "Cc: " << this->cc << endl;
-    file_descriptor << "Subject: " << this->subject << endl;
-    file_descriptor << "Body: " << this->body << endl;
-    file_descriptor << "Priority: " << getPriorityInfo() << endl;
+    file_descriptor << "To: " << this->to << std::endl;
+    file_descriptor << "Cc: " << this->cc << std::endl;
+    file_descriptor << "Subject: " << this->subject << std::endl;
+    file_descriptor << "Body: " << this->body << std::endl;
+    file_descriptor << "Priority: " << getPriorityInfo() << std::endl;
 }
 
 /*
 * Mesaji icindeki bilgileri arasina ve sonuna \n ekleyerek string'e donusturur.
 */
-string Message::messageToString()
+std::string Message::messageToString()
 {
     return to + "\n" + cc + "\n" + subject + "\n" + body + "\n" + getPriorityInfo() + "\n";
 }
@@ -115,11 +116,11 @@ priorityLevel sinifi -- enum priorityLevel { Low, Medium, High } -- seklinde tan
 Eger verilen string tanimlanan herhangi bir priorityLevel seviyesi degilse hata mesaji dondurulur.
 Buyuk ve kucuk harf kullanimi tolere edilmistir.
 */
-priorityLevel convertStringToPriorityLevel(string str)   //parse 
+priorityLevel convertStringToPriorityLevel(std::string str)   //parse
 {
     if (str.length() > 0)
     {
-        string temp = "";
+        std::string temp = "";
         temp += toupper(str[0]);
         for (int i = 1; i < str.length(); i++)
         {
@@ -133,7 +134,7 @@ priorityLevel convertStringToPriorityLevel(string str)   //parse
         }
         else
         {
-            throw "Bu gecerli bir oncelik seviyesi degil!!";
+             throw "Bu gecerli bir oncelik seviyesi degil!!";
         }
     }
     else
@@ -148,9 +149,9 @@ Verilen string "to + \n + cc + \n + subject + \n + body + \n + priority + \n"
 seklinde olusturulmus olmalidir.
 messageToString() member fonksiyonunun tersidir.
 */
-Message stringToMessage(string msg)
+Message stringToMessage(std::string msg)
 {
-    string info[5] = { "", "", "", "", "" };
+    std::string info[5] = { "", "", "", "", "" };
 
     int i = 0;
     for (int j = 0; (j < msg.length()) && (i < 5); j++)
