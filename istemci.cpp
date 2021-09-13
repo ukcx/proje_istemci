@@ -6,7 +6,8 @@
 #include <iostream>
 #include <string.h>
 #include <winsock2.h>
-#include <conio.h>                              //_khbit() ve _getch() fonksiyonlari icin
+#include <conio.h>                              //_kbhit() ve _getch() fonksiyonlari icin
+#include <unordered_set>
 #include "message.h"
 
 using namespace std;
@@ -14,133 +15,192 @@ using namespace std;
 constexpr auto MSG_SIZE = 1000;
 string sunucu_adresi = "127.0.0.1";     //"localhost";
 int sunucu_portu = 194;
+unordered_set<string> mesajin_yazdirilinabilecegi_yerler = { "console", "database", "file" };
+
+
+string convertToLowerCase(string str)
+{
+    string lowerCaseStr = "";
+    for (int i = 0; i < str.length(); i++)
+    {
+        lowerCaseStr += tolower(str[i]);
+    }
+    return lowerCaseStr;
+}
 
 int main()
 {
-    WSADATA wsa;            //winsock kutuphanesini baslatmak icin
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+    try
     {
-        printf("Winsock baslatilamadi. Hata kodu: %d", WSAGetLastError());
-        return 1;
-    }
+        WSADATA wsa;
+        if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)  //winsock kutuphanesini baslatmak icin gerekli
+        {
+            throw "Winsock baslatilamadi.";     //throw komutu yurutulurse ait olunan try scope'undan cikilir ve direkt
+                                                // olarak try scope'unun disinda scope'a en yakin catch fonksiyonuna gidilir
+        }
 
-    sockaddr_in addr;                   //soket icin gerekli adres bilgileri
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family = AF_INET;          //IPv4 
-    addr.sin_addr.s_addr = inet_addr(sunucu_adresi.c_str());   //sunucu IP adresi
-    addr.sin_port = htons(sunucu_portu);
+        sockaddr_in addr;                   //soket icin gerekli adres bilgileri
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;          //IPv4 
+        addr.sin_addr.s_addr = inet_addr(sunucu_adresi.c_str());   //sunucu IP adresi
+        addr.sin_port = htons(sunucu_portu);
 
-    SOCKET soket = socket(AF_INET, SOCK_STREAM, 0);     //SOCK_STREAM TCP/IP protokolune uygun olan sabit
+        SOCKET soket = socket(AF_INET, SOCK_STREAM, 0);     //SOCK_STREAM TCP/IP protokolune uygun olan sabit
 
-    if (soket == INVALID_SOCKET)
-    {
-        cerr << "Soket olusturulamadi\n";
-        return 1;
-    }
-    else
-    {
+        if (soket == INVALID_SOCKET)
+        {
+            throw "Soket olusturulamadi";
+        }
+
+
         if (connect(soket, (sockaddr*)&addr, sizeof(addr)) < 0)    //sunucuya baglan
         {
-            cerr << "Sunucuya baglanma hatasi" << endl;
-            return 1;
+            throw "Sunucuya baglanma hatasi";
         }
-        else
+
+        cout << "Sunucuya baglanildi" << endl;  //kodda buraya kadar herhangi bir throw komutu yürütülmediyse sunucuya basariyla baglanildi
+
+        string cc, to, subject, body, prio;
+        string garbage_collector;
+        bool isInputInCorrectFormat = true;
+        bool escapeCharacterIsPressed = false;      //ESC'ye basilmadi
+
+        while (!escapeCharacterIsPressed)       //ESC karakteri girilene kadar mesaj girilmeye devam ediliyor
         {
-            cout << "Sunucuya baglanildi" << endl;
+            isInputInCorrectFormat = true;
 
-            string cc, to, subject, body, prio;
-            string garbage_collector;
-            bool isInputInCorrectFormat = true;
-            char escapeCharacter = '\n';
+            cout << endl << "Mesaj bilgilerinizi asagiya giriniz:" << endl;
+            cout << "To: ";
+            getline(cin, to);                       //getline ile bosluk karakteri de alinabilir
+            cout << "Cc: ";
+            getline(cin, cc);
+            cout << "Subject: ";
+            getline(cin, subject);
+            cout << "Body: ";
+            getline(cin, body);
+            cout << "Priority Level (low, medium, high): ";
+            cin >> prio;
 
-            while (escapeCharacter != 27)       //ESC karakteri girilene kadar mesaj girilmeye devam ediliyor
+            getline(cin, garbage_collector);    //eger cin'de extra mesaj kaldiysa topla
+
+            try         //oncelik seviyesi dogru girilmediyse mesaj olusturmuyoruz
             {
-                isInputInCorrectFormat = true;
+                convertStringToPriorityLevel(prio);
+            }
+            catch (const char* error_message)
+            {
+                cerr << endl << error_message << endl;
+                cerr << "Mesajiniz gonderilemedi" << endl;
+                isInputInCorrectFormat = false;    //mesajin oncelik seviyesi yanlis, mesaj olusturulamaz 
+            }
 
-                cout << endl << "Mesaj bilgilerinizi asagiya giriniz:" << endl;
-                cout << "To: ";
-                getline(cin, to);                       //getline ile bosluk karakteri de alinabilir
-                cout << "Cc: ";
-                getline(cin, cc);
-                cout << "Subject: ";
-                getline(cin, subject);
-                cout << "Body: ";
-                getline(cin, body);
-                cout << "Priority Level (low, medium, high): ";
-                cin >> prio;
+            if (isInputInCorrectFormat)             //oncelik seviyesi dogru girilmis
+            {
+                Message* mesaj = new Message(to, cc, subject, body, convertStringToPriorityLevel(prio));
 
-                getline(cin, garbage_collector);    //eger cin'de extra mesaj kaldiysa topla
+                bool gecerli_yazdirilacak_yer = true;
+                string yazdirilacak_yer;    //database, file veya console'a yazdirim icin kullanicidan input aliniyor
 
-                try         //oncelik seviyesi dogru girilmediyse mesaj olusturmuyoruz
+                cout << "Please enter where do you want your message to be written (database, file, console): ";
+                getline(cin, yazdirilacak_yer);
+                yazdirilacak_yer = convertToLowerCase(yazdirilacak_yer);
+
+                try
                 {
-                    convertStringToPriorityLevel(prio);
+                    auto arayici = mesajin_yazdirilinabilecegi_yerler.find(yazdirilacak_yer);
+                    if (arayici == mesajin_yazdirilinabilecegi_yerler.end())    //kullanicinin girdigi yazdirma yeri gecerli degil
+                    {
+                        throw "Gecerli yazdirilacak yer verilmedi!";
+                    }
                 }
                 catch (const char* error_message)
                 {
-                    cerr << endl << error_message << endl;
+                    cout << endl << error_message << endl;
                     cerr << "Mesajiniz gonderilemedi" << endl;
-                    isInputInCorrectFormat = false;    //mesajin oncelik seviyesi yanlis, mesaj olusturulamaz 
+                    gecerli_yazdirilacak_yer = false;
                 }
 
-                if (isInputInCorrectFormat)
+                if (yazdirilacak_yer == "console")      //o zaman mesaji gondermeden sadece sunucuda yazdir
                 {
-                    Message* mesaj = new Message(to, cc, subject, body, convertStringToPriorityLevel(prio));
-
-                    if (send(soket, mesaj->messageToString().c_str(), mesaj->messageToString().length(), 0) < 0)   //write, send ile soket uzerine mesaj yaziyoruz
+                    cout << endl << "Mesajiniz: " << endl;
+                    mesaj->printMessage();
+                }
+                else if (gecerli_yazdirilacak_yer)
+                {
+                    if (send(soket, yazdirilacak_yer.c_str(), yazdirilacak_yer.length(), 0) < 0) //write, send ile soket uzerine mesaji yazdrimak istedigimiz yeri yaziyoruz
                     {
                         cerr << "\nMesaj gonderilemedi" << endl;
-                        return 1;
+                        return 1;           //eger mesaj gonderemezsek sunucunun haberi olmasi icin istemciyi kapat
                     }
-                    else    //mesaj basariyla gonderildi
+                    else
                     {
-                        cout << "\nMesaj gonderildi" << endl;
-                        cout << "\nGonderilen mesaj: " << endl;
-                        mesaj->printMessage();
-                        delete mesaj;
-
-                        char alinan_mesaj[MSG_SIZE];
-                        memset(&alinan_mesaj, 0, MSG_SIZE);
-                        recv(soket, alinan_mesaj, MSG_SIZE, 0); //read, recv ile soket uzerinden mesaji okuyoruz
-                        cout << "\nSunucudan alinan mesaj: " << alinan_mesaj << endl;
-                    }
-                }
-
-                cout << "\nMesaj gonderemeye devam etmek icin Enter'a, mesaj gonderim islemini sonlandirmak icin ESC'ye basiniz!" << endl;
-
-                string stop_message = "stop";   //kullanici ESC'ye basarsa bu mesaj sunucuya gidecek
-                bool isAValidKeyPressed = false;    //kullanici sadece Enter veya ESC'ye basabilir
-
-                while (!isAValidKeyPressed)
-                {
-                    if (_kbhit())   //klavyede bir tusa basildiysa true dondurur
-                    {
-                        int ch = 0 | _getch();  //getch() ile basilan karakteri al
-                        if (ch == 0xe0 && _kbhit()) { // extended karakter (0xe0, xxx)
-                            ch = (ch << 8) | _getch(); // extended karakter bilgisini al
-                        }
-                        switch (ch)
+                        if (send(soket, mesaj->messageToString().c_str(), mesaj->messageToString().length(), 0) < 0)   //write, send ile soket uzerine mesaj yaziyoruz
                         {
-                        case 0x0d:      //Enter'a basildiysa loop'tan cik ve tekrar mesaj al.
-                            cout << "\nEnter'a basildi" << endl;
-                            isAValidKeyPressed = true;
-                            break;
+                            cerr << "\nMesaj gonderilemedi" << endl;
+                            return 1;       //eger mesaj gonderemezsek sunucunun haberi olmasi icin istemciyi kapat
+                        }
+                        else    //mesaj basariyla gonderildi
+                        {
+                            cout << "\nMesaj gonderildi" << endl;
 
-                        case 0x1b:      //ESC'ye basildiysa loop'tan cik ve tekrar mesaj alma. 
-                            cout << "\nESC'ye basildi" << endl;
-                            escapeCharacter = 27;
-                            send(soket, stop_message.c_str(), stop_message.length(), 0);
-                            isAValidKeyPressed = true;
-                            break;
-
-                        default:   //diger durumlarda gecerli bir karakter (enter veya esc) girilene kadar karakter almaya devam et
-                            break;
+                            char alinan_mesaj[MSG_SIZE];
+                            memset(&alinan_mesaj, 0, MSG_SIZE);
+                            recv(soket, alinan_mesaj, MSG_SIZE, 0); //read, recv ile soket uzerinden mesaji okuyoruz
+                            cout << "\nSunucudan alinan mesaj: " << alinan_mesaj << endl;
                         }
                     }
                 }
 
+                delete mesaj;
             }
+
+            cout << "\nMesaj gondermeye devam etmek icin Enter'a, mesaj gonderim islemini sonlandirmak icin ESC'ye basiniz!" << endl;
+
+
+            string stop_message = "stop";           //kullanici ESC'ye basarsa bu mesaj sunucuya gidecek
+            bool isAValidKeyPressed = false;        //kullanicinin gecerli bir karaktere basip basmadigini tut (Enter veya ESC)
+
+            while (!isAValidKeyPressed)             //Enter veya ESC basilana kadar
+            {
+                if (_kbhit())                       //klavyede bir tusa basildiysa true dondurur
+                {
+                    int ch = 0 | _getch();          //getch() ile klavyede basilan karakteri al, char 8 bit oldugu icin ch'nin 32 bitinin bastaki 24 bitini 0 yap
+
+                    if (ch == 0xe0 && _kbhit())     // extended karakter (0xe0, xxx)
+                    {
+                        ch = (ch << 8) | _getch();  // extended karakteri donustur
+                    }
+                    switch (ch)
+                    {
+                    case 0x0d:      //Enter'a basildiysa loop'tan cik ve tekrar mesaj al.
+
+                        cout << "\nEnter'a basildi" << endl;
+                        isAValidKeyPressed = true;
+                        break;
+
+                    case 0x1b:      //ESC'ye basildiysa loop'tan cik ve tekrar mesaj alma. 
+
+                        cout << "\nESC'ye basildi" << endl;
+                        send(soket, stop_message.c_str(), stop_message.length(), 0);
+                        escapeCharacterIsPressed = true;
+                        isAValidKeyPressed = true;
+                        break;
+
+                    default:   //diger durumlarda gecerli bir karakter (enter veya esc) girilene kadar karakter almaya devam et
+
+                        break;
+                    }
+                }
+            }
+
         }
+
+        closesocket(soket);
     }
-    closesocket(soket);
+    catch (const char* hata_mesaji)
+    {
+        cout << hata_mesaji << endl;        //socket'te veya kutuphanede hata cikarsa gonderilen hata mesajini yazdir
+    }
+
     return 0;
 }
