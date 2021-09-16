@@ -64,7 +64,8 @@ void MainWindow::connectionButton_clicked()
     if(client != nullptr){
         delete client;
     }
-    client = new ClientOperations(server_ip_address, port_number);
+    client = new ClientOperations;
+    client->initializeSocket(server_ip_address, port_number);
 
     if(client->connectToServer())
     {

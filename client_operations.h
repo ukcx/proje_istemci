@@ -18,62 +18,62 @@ const int MSG_SIZE = 200;
 class ClientOperations
 {
 public:
-    ClientOperations(std::string server_address, const int port);
+    ClientOperations();
     ~ClientOperations();
+    bool initializeSocket(std::string address, int port);
     bool connectToServer();
     bool sendMessage(std::string msg);
-    bool recieveMessage(std::string & msg);   //read, recv ile soket uzerinden mesaji okuyoruz
+    bool receiveMessage(std::string & msg);   //read, recv ile soket uzerinden mesaji okuyoruz
 
 private:
     SOCKET createSocket();
 
-    WSADATA wsa;
     SOCKET client_socket;
-    sockaddr_in server_addr;            //soket icin gerekli adres bilgileri
+    sockaddr_in server_info;            //soket icin gerekli adres bilgileri
     std::string server_address;
     int port;
 };
 
 extern ClientOperations* client;
 
-ClientOperations::ClientOperations(std::string address, const int p)
-{
-    server_address = address;
-    port = p;
-    try {
-
-        if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)  //winsock kutuphanesini baslatmak icin gerekli
-            throw "Winsock baslatilamadi.";     /*throw komutu yurutulurse ait olunan try scope'undan cikilir ve direkt
-                                                  olarak try scope'unun disinda scope'a en yakin catch fonksiyonuna gidilir*/
-
-        client_socket = createSocket();
-        if (client_socket == INVALID_SOCKET)
-            throw "Soket olusturulamadi";
-
-    }  catch (...) {
-        std::cout << "hata";
-    }
-
-}
+ClientOperations::ClientOperations()
+{}
 
 ClientOperations::~ClientOperations()
 {
     closesocket(client_socket);
 }
 
+bool ClientOperations::initializeSocket(std::string address, int p) 
+{
+    WSADATA wsa;
+    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
+        return false;
+
+    server_address = address;
+    port = p;
+
+    client_socket = createSocket();
+    
+    if (client_socket == INVALID_SOCKET)
+        return false;
+
+    return true;
+}
+
 SOCKET ClientOperations::createSocket()
 {
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;                                 //IPv4
-    server_addr.sin_addr.s_addr = inet_addr(server_address.c_str());   //sunucu IP adresi
-    server_addr.sin_port = htons(port);
+    memset(&server_info, 0, sizeof(server_info));
+    server_info.sin_family = AF_INET;                                   //IPv4
+    server_info.sin_addr.s_addr = inet_addr(server_address.c_str());   //sunucu IP adresi
+    server_info.sin_port = htons(port);
 
     return socket(AF_INET, SOCK_STREAM, 0);     //SOCK_STREAM TCP/IP protokolune uygun olan sabit
 }
 
 bool ClientOperations::connectToServer()        //sunucuya baglan
 {
-    if (connect(client_socket, (sockaddr*)&server_addr, sizeof(server_addr)) < 0){
+    if (connect(client_socket, (sockaddr*)&server_info, sizeof(server_info)) < 0){
         return false;
     }
     return true;
@@ -89,7 +89,7 @@ bool ClientOperations::sendMessage(std::string msg)
         return true;
 }
 
-bool ClientOperations::recieveMessage(std::string &msg)
+bool ClientOperations::receiveMessage(std::string &msg)
 {
     char received_message[MSG_SIZE];
     memset(&received_message, 0, MSG_SIZE);
