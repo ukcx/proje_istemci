@@ -36,7 +36,7 @@ void MessageWindow::sendMessage_clicked()
     if( (client->sendMessage(placeToWrite))
             && (client->sendMessage(msg.messageToString())))
     {
-        if(client->recieveMessage(message))
+        if(client->receiveMessage(message))
         {
             QMessageBox::information(this, "Message Has Been Sent", "Server's feedback: " + QString::fromStdString(message));
         }

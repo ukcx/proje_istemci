@@ -1,5 +1,3 @@
-#include "message.h"
-#include "client_operations.h"
 #include "mainwindow.h"
 #include "mainwindow.cpp"
 #include "messagewindow.h"
